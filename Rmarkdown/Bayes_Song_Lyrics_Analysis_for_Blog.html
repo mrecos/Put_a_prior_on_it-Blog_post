@@ -157,7 +157,7 @@ $(document).ready(function () {
 </div>
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
-<p>This is a repo to hold the data and code for <a href="https://wordpress.com/post/matthewdharris.com/4405">my blog post</a> based on Julia Silge’s <a href="http://juliasilge.com/blog/Bayesian-Blues/"><em>Singing the Bayesian Beginner Blues</em></a>. The post by Silge is a really fun and interesting analysis of the rate at which song lyrics from <em>Billboard Hot-100</em> songs (1958 to present) mention U.S. States by name. In second post on the subject, Silge used a beta distribution to model this rate. After reading that post, I was inspired to follow up on this model with my current interest in Bayesian modeling with <a href="http://mc-stan.org/">Stan</a>, a probabilistic programming language. I hoped to repeat Silge’s findings while learning how to code her model in Stan. This was also a fun opportunity to work on more <code>dplyr</code> data munging techniques. The result was a good learning experience and perhaps a few additional insights into the distribution of state name mentions.</p>
+<p>This is a repo to hold the data and code for <a href="https://wordpress.com/post/matthewdharris.com/4405">my blog post</a> based on Julia Silge’s <a href="http://juliasilge.com/blog/Bayesian-Blues/"><em>Singing the Bayesian Beginner Blues</em></a>. The post by Silge is a really fun and interesting analysis of the rate at which song lyrics from <em>Billboard Hot-100</em> songs (1958 to present) mention U.S. States by name. In her second post on the subject, Silge used a beta distribution to model this rate. After reading that post, I was inspired to learn more about her method and to follow up on this model with my interests in Bayesian modeling with <a href="http://mc-stan.org/">Stan</a>, a probabilistic programming language. I hoped to repeat Silge’s findings while learning how to code her model in Stan. This was also a fun opportunity to work on more <code>dplyr</code> data munging techniques. The result was a good learning experience and perhaps a few additional insights into the distribution of state name mentions.</p>
 <p>If you are interested in this, please see <a href="https://wordpress.com/post/matthewdharris.com/4405">my blog post</a> and <a href="http://juliasilge.com/blog/Bayesian-Blues/">Julia’s posts</a>. <strong>Note</strong>: the code and analytical process here is based on <a href="https://github.com/juliasilge/juliasilge.github.io/blob/master/_R/2016-09-28-Bayesian-Blues.Rmd">Silge’s workflow</a>, but alterations and additions were made to focus on these different aspects. Any errors, sloppiness, or misunderstandings are my own. Also, I am sure there are other way to model these data. I’d be happy to hear about them, but this post is intended to explore this particular method. Please contact me if you see errors and just to day hi. <span class="citation">[@md_harris]</span>)<a href="https://twitter.com/Md_Harris" class="uri">https://twitter.com/Md_Harris</a></p>
 <div id="differences-from-silges-analysis" class="section level3">
 <h3>Differences from Silge’s Analysis</h3>
@@ -377,9 +377,8 @@ state_city_counts <- filter(state_city_counts_zeros, n_city_state > zero_rate)</
 <h2>Fun facts…</h2>
 <div id="some-interesting-things-about-these-data" class="section level3">
 <h3>Some interesting things about these data</h3>
-<ol style="list-style-type: decimal">
-<li>States mentioned by their cities, but not the state itself</li>
-</ol>
+<div id="states-mentioned-by-their-cities-but-not-the-state-itself" class="section level4">
+<h4>1. States mentioned by their cities, but not the state itself</h4>
 <pre class="r"><code># Boston = most mentioned city without its state
 all_the_cities <- filter(state_city_counts, !state_name %in% state_counts$state_name) %>%
   dplyr::select(name) %>%
@@ -508,845 +507,72 @@ kable(all_the_cities)</code></pre>
 </tr>
 </tbody>
 </table>
-<ol start="2" style="list-style-type: decimal">
-<li>What song mentions the most unique state names?</li>
-</ol>
+</div>
+<div id="what-song-mentions-the-most-unique-state-names" class="section level4">
+<h4>2. What song mentions the most unique state names?</h4>
 <pre class="r"><code>n_states_mentioned <- tidy_lyrics_state %>%
-  group_by(Song) %>%
+  group_by(Artist, Song) %>%
   dplyr::summarise(n = n()) %>%
-  arrange(desc(n))
-kable(n_states_mentioned)</code></pre>
+  arrange(desc(n)) %>%
+  ungroup() %>%
+  top_n(5)</code></pre>
+<pre><code>Selecting by n</code></pre>
+<pre class="r"><code>kable(n_states_mentioned)</code></pre>
 <table>
 <thead>
 <tr class="header">
+<th align="left">Artist</th>
 <th align="left">Song</th>
 <th align="right">n</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
+<td align="left">red hot chili peppers</td>
 <td align="left">dani california</td>
 <td align="right">7</td>
 </tr>
 <tr class="even">
+<td align="left">duice</td>
 <td align="left">dazzey duks</td>
 <td align="right">5</td>
 </tr>
 <tr class="odd">
-<td align="left">country grammar hot shit</td>
-<td align="right">4</td>
-</tr>
-<tr class="even">
+<td align="left">jason aldean</td>
 <td align="left">fly over states</td>
 <td align="right">4</td>
 </tr>
+<tr class="even">
+<td align="left">nelly</td>
+<td align="left">country grammar hot shit</td>
+<td align="right">4</td>
+</tr>
 <tr class="odd">
+<td align="left">arlo guthrie</td>
 <td align="left">city of new orleans</td>
 <td align="right">3</td>
 </tr>
 <tr class="even">
+<td align="left">crazy elephant</td>
 <td align="left">gimme gimme good lovin</td>
 <td align="right">3</td>
 </tr>
 <tr class="odd">
+<td align="left">ludacris featuring bobby valentino</td>
 <td align="left">pimpin all over the world</td>
 <td align="right">3</td>
 </tr>
-<tr class="even">
-<td align="left">all summer long</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">arizona</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">california girls</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">empire state of mind</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">get back</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">honey bee</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">ive never been to me</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">kids in america</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">living for the city</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">living in america</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">me and bobby mcgee</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">mississippi girl</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">mississippi queen</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">never been to spain</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">please come to boston</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">raise the roof</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">ramblin man</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">rockin roll baby</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">sugar gimme some</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">take me home country roads</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">the boy from new york city</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">the heart of rock roll</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">we didnt start the fire</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">yo“u and i</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">21 questions</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">achy breaky heart</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">all eyes on you</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">allentown</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">american boy</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">american kids</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">amos moses</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">an american dream</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">anything</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">arthurs theme best that you can do</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">as good as i once was</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">ayo</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">be like that</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">bedrock</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">beer for my horses</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">best song ever</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">bette davis eyes</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">big pimpin</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">black velvet</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">black water</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">blown away</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">bounce with me</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">boys round here</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">bring em out</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">burnin it down</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">california dreamin</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">california gurls</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">california nights</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">cant nobody hold me down</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">change clothes</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">chicken fried</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">cold rock a party</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">colder weather</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">country boy you got your feet in la</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">country girl shake it for me</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">cruise</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">da dip</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">daydreamin</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">deacon blues</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">deja vu uptown baby</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">dont mean nothing</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">drive by</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">drive for daddy gene</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">elevators me you</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">empty garden hey hey johnny</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">eve of destruction</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">every girl</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">exs ohs</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">flashing lights</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">forever</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">funky nassau</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">funky worm</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">get money</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">get your shine on</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">ghetto cowboy</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">give it to me</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">gold</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">good life</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">hard knock life ghetto anthem</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">have you forgotten</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">hawaii fiveo</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">hazard</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">hello</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">here we go</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">hey there delilah</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">holiday</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">hollywood nights</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">honky tonk women</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">hotel california</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">how do you like me now</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">how we do</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">im too sexy</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">in america</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">in da club</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">indiana wants me</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">international love</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">into you</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">it never rains in southern california</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">key west intermezzo i saw you first</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">king of the road</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">kokomo</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">ladies night</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">lawyers in love</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">leader of the band</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">lean back</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">leave me alone ruby red dress</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">lets go all the way</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">lights camera action</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">livin la vida loca</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">long time gone</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">long train runnin</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">lookin out my back door</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">loungin</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">love rollercoaster</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">mary janes last dance</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">me and you and a dog named boo</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">meet virginia</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">message to michael</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">miami</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">midnight train to georgia</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">mockingbird</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">my boo</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">native new yorker</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">new york groove</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">no diggity</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">no no no</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">no no song</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">nobody told me</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">nothin on you</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">now that we found love</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">number one spot</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">oh boy</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">on fire</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">on the floor</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">one more chance</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">only</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">patches</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">people are crazy</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">pimp</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">play it again</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">please mr please</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">poker face</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">polk salad annie</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">pop muzik</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">rainy night in georgia</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">ride wit me</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">riptide</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">rocky mountain high</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">same girl</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">scar tissue</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">shake ya tailfeather</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">sittin on the dock of the bay</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">someone</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">southern hospitality</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">southside</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">stay fly</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">stayin alive</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">sugar</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">summer girls</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">sweater weather</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">sweetest girl dollar bill</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">take the money and run</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">talk dirty</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">tennessee</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">the beach boys medley</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">the climb</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">the devil went down to georgia</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">the motto</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">the next episode</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">the night the lights went out in georgia</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">the night they drove old dixie down</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">the party continues</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">the show goes on</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">the world i know</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">this is why im hot</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">tighten up</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">tonight tonight</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">undercover of the night</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">up jumps da boogie</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">uptown funk</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">wagon wheel</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">westside</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">what was i thinkin</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">whats your name</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">when a womans fed up</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">where have all the cowboys gone</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">wildfire</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">wildwood weed</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">woo hah got you all in check</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">work hard play hard</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">you dont mess around with jim</td>
-<td align="right">1</td>
-</tr>
 </tbody>
 </table>
-<pre class="r"><code>filter(tidy_lyrics_state, Song == as.character(n_states_mentioned[1,1])) %>%
+<pre class="r"><code># Top song is...
+filter(tidy_lyrics_state, Song == as.character(n_states_mentioned[1,1])) %>%
   dplyr::select(Song, Artist, Year, state_name)</code></pre>
-<pre><code># A tibble: 7 × 4
-             Song                Artist  Year   state_name
-            <chr>                 <chr> <int>        <chr>
-1 dani california red hot chili peppers  2006      alabama
-2 dani california red hot chili peppers  2006   california
-3 dani california red hot chili peppers  2006      indiana
-4 dani california red hot chili peppers  2006    louisiana
-5 dani california red hot chili peppers  2006    minnesota
-6 dani california red hot chili peppers  2006  mississippi
-7 dani california red hot chili peppers  2006 north dakota</code></pre>
-<p>3 What song mentions a single state the most number of times?</p>
+<pre><code># A tibble: 0 × 4
+# ... with 4 variables: Song <chr>, Artist <chr>, Year <int>,
+#   state_name <chr></code></pre>
+</div>
+<div id="what-song-mentions-a-single-state-the-most-number-of-times" class="section level4">
+<h4>3. What song mentions a single state the most number of times?</h4>
 <pre class="r"><code>most_repeated_in_song <- right_join(tidy_lyrics, pop_df,
                                 by = c("lyric" = "state_name")) %>%
   group_by(Song, Artist, lyric) %>%   
@@ -1428,6 +654,7 @@ kable(most_repeated_in_song)</code></pre>
 </tr>
 </tbody>
 </table>
+</div>
 </div>
 </div>
 <div id="parameter-estimation" class="section level2">
@@ -2713,7 +1940,23 @@ state_city_estimates %>%
 <div id="model-comparison" class="section level2">
 <h2>Model Comparison</h2>
 <p>There are lots of ways to compare which model is “better”, but I am not going to go crazy with it. Log posteriors from the Stan models <em>can</em> be compared, but I do not believe they can be used for inference directly from the form they are reported from the fit. We could also do things like hold-out samples, cross-validations, Leave-One-Out CV, or use information criteria such as WAIC. <a href="http://andrewgelman.com/2014/05/26/waic-cross-validation-stan/">See Gelman</a> and go down the rabbit hole from there.</p>
-<p>Here I take a simple approach and calculate a few metrics based a few things: * Loss Metrics + Mean Absolute Error (MAE) + Root Mean Square Error (RMSE) * Credible Interval (CI) + mean width of 95% CI * Predicted Mentions + RMSE of expected mentions vs observed mentions + MAE of the same</p>
+<p>Here I take a simple approach and calculate a few metrics based a few things:</p>
+<ul>
+<li>Loss Metrics
+<ul>
+<li>Mean Absolute Error (MAE)</li>
+<li>Root Mean Square Error (RMSE)</li>
+</ul></li>
+<li>Credible Interval (CI)
+<ul>
+<li>mean width of 95% CI</li>
+</ul></li>
+<li>Predicted Mentions
+<ul>
+<li>RMSE of expected mentions vs observed mentions</li>
+<li>MAE of the same</li>
+</ul></li>
+</ul>
 <p>These result show that the state counts only model <em>may</em> have the slightest advantage over the states + cities counts, but it really is very small. For me, the choice of model would simply be which fits my purpose better; both are pretty darn good at estimating the number of mentions. the MAE of expected mentions per state is less than 0.2 of a mention; rounded down to no real error at all in that category. The beta distribution accurately described these data</p>
 <pre class="r"><code>city_state_error <- state_city_estimates %>%
   mutate(rate_error = mean - city_state_rate,

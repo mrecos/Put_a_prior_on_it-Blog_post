@@ -43,7 +43,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ## Introduction
-This is a repo to hold the data and code for [my blog post](https://wordpress.com/post/matthewdharris.com/4405) based on Julia Silge's [*Singing the Bayesian Beginner Blues*](http://juliasilge.com/blog/Bayesian-Blues/). The post by Silge is a really fun and interesting analysis of the rate at which song lyrics from *Billboard Hot-100* songs (1958 to present) mention U.S. States by name. In second post on the subject, Silge used a beta distribution to model this rate.  After reading that post, I was inspired to follow up on this model with my current interest in Bayesian modeling with [Stan](http://mc-stan.org/), a probabilistic programming language.  I hoped to repeat Silge's findings while learning how to code her model in Stan.  This was also a fun opportunity to work on more `dplyr` data munging techniques.  The result was a good learning experience and perhaps a few additional insights into the distribution of state name mentions.  
+This is a repo to hold the data and code for [my blog post](https://wordpress.com/post/matthewdharris.com/4405) based on Julia Silge's [*Singing the Bayesian Beginner Blues*](http://juliasilge.com/blog/Bayesian-Blues/). The post by Silge is a really fun and interesting analysis of the rate at which song lyrics from *Billboard Hot-100* songs (1958 to present) mention U.S. States by name. In her second post on the subject, Silge used a beta distribution to model this rate.  After reading that post, I was inspired to learn more about her method and to follow up on this model with my interests in Bayesian modeling with [Stan](http://mc-stan.org/), a probabilistic programming language.  I hoped to repeat Silge's findings while learning how to code her model in Stan.  This was also a fun opportunity to work on more `dplyr` data munging techniques.  The result was a good learning experience and perhaps a few additional insights into the distribution of state name mentions.  
 
 If you are interested in this, please see [my blog post](https://wordpress.com/post/matthewdharris.com/4405)  and [Julia's posts](http://juliasilge.com/blog/Bayesian-Blues/). **Note**: the code and analytical process here is based on [Silge's workflow](https://github.com/juliasilge/juliasilge.github.io/blob/master/_R/2016-09-28-Bayesian-Blues.Rmd), but alterations and additions were made to focus on these different aspects.  Any errors, sloppiness, or misunderstandings are my own.  Also, I am sure there are other way to model these data.  I'd be happy to hear about them, but this post is intended to explore this particular method.  Please contact me if you see errors and just to day hi. [@md_harris])https://twitter.com/Md_Harris
 
@@ -215,7 +215,9 @@ state_city_counts <- filter(state_city_counts_zeros, n_city_state > zero_rate)
 
 ## Fun facts...
 ### Some interesting things about these data
-1. States mentioned by their cities, but not the state itself
+
+
+####1. States mentioned by their cities, but not the state itself
 ```{r fun_facts, comment=''}
 # Boston = most mentioned city without its state
 all_the_cities <- filter(state_city_counts, !state_name %in% state_counts$state_name) %>%
@@ -227,19 +229,24 @@ all_the_cities <- filter(state_city_counts, !state_name %in% state_counts$state_
 kable(all_the_cities)
 ```
 
-2. What song mentions the most unique state names?
+
+#### 2. What song mentions the most unique state names?
 ```{r fun_facts2, comment=''}
 n_states_mentioned <- tidy_lyrics_state %>%
-  group_by(Song) %>%
+  group_by(Artist, Song) %>%
   dplyr::summarise(n = n()) %>%
-  arrange(desc(n))
+  arrange(desc(n)) %>%
+  ungroup() %>%
+  top_n(5)
 kable(n_states_mentioned)
 
+# Top song is...
 filter(tidy_lyrics_state, Song == as.character(n_states_mentioned[1,1])) %>%
   dplyr::select(Song, Artist, Year, state_name)
 ```
 
-3 What song mentions a single state the most number of times?
+
+#### 3. What song mentions a single state the most number of times?
 ```{r fun_facts3, comment=''}
 most_repeated_in_song <- right_join(tidy_lyrics, pop_df,
                                 by = c("lyric" = "state_name")) %>%
@@ -543,6 +550,7 @@ state_city_estimates %>%
 There are lots of ways to compare which model is "better", but I am not going to go crazy with it.  Log posteriors from the Stan models *can* be compared, but I do not believe they can be used for inference directly from the form they are reported from the fit.  We could also do things like hold-out samples, cross-validations, Leave-One-Out CV, or use information criteria such as WAIC.  [See Gelman](http://andrewgelman.com/2014/05/26/waic-cross-validation-stan/) and go down the rabbit hole from there. 
 
 Here I take a simple approach and calculate a few metrics based a few things:
+
 * Loss Metrics
     + Mean Absolute Error (MAE)
     + Root Mean Square Error (RMSE)

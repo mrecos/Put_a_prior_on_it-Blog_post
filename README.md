@@ -3,6 +3,16 @@ Puttin'a Prior on It: Stan Beta Estmation of Song Lyrics
 MDH
 10/6/2016
 
+-   [Estimating a Beta Distribution with Stan HMC](#estimating-a-beta-distribution-with-stan-hmc)
+-   [Introduction](#introduction)
+-   [Get Data](#get-data)
+-   [Join, mutate, and munge the data](#join-mutate-and-munge-the-data)
+-   [Fun facts...](#fun-facts...)
+-   [Parameter estimation](#parameter-estimation)
+-   [Hamiltonian Monte Carlo (HMC)](#hamiltonian-monte-carlo-hmc)
+-   [Adding City Counts](#adding-city-counts)
+-   [Model Comparison](#model-comparison)
+
 Estimating a Beta Distribution with Stan HMC
 --------------------------------------------
 
@@ -11,7 +21,7 @@ Estimating a Beta Distribution with Stan HMC
 Introduction
 ------------
 
-This is a repo to hold the data and code for [my blog post](https://wordpress.com/post/matthewdharris.com/4405) based on Julia Silge's [*Singing the Bayesian Beginner Blues*](http://juliasilge.com/blog/Bayesian-Blues/). The post by Silge is a really fun and interesting analysis of the rate at which song lyrics from *Billboard Hot-100* songs (1958 to present) mention U.S. States by name. In second post on the subject, Silge used a beta distribution to model this rate. After reading that post, I was inspired to follow up on this model with my current interest in Bayesian modeling with [Stan](http://mc-stan.org/), a probabilistic programming language. I hoped to repeat Silge's findings while learning how to code her model in Stan. This was also a fun opportunity to work on more `dplyr` data munging techniques. The result was a good learning experience and perhaps a few additional insights into the distribution of state name mentions.
+This is a repo to hold the data and code for [my blog post](https://wordpress.com/post/matthewdharris.com/4405) based on Julia Silge's [*Singing the Bayesian Beginner Blues*](http://juliasilge.com/blog/Bayesian-Blues/). The post by Silge is a really fun and interesting analysis of the rate at which song lyrics from *Billboard Hot-100* songs (1958 to present) mention U.S. States by name. In her second post on the subject, Silge used a beta distribution to model this rate. After reading that post, I was inspired to learn more about her method and to follow up on this model with my interests in Bayesian modeling with [Stan](http://mc-stan.org/), a probabilistic programming language. I hoped to repeat Silge's findings while learning how to code her model in Stan. This was also a fun opportunity to work on more `dplyr` data munging techniques. The result was a good learning experience and perhaps a few additional insights into the distribution of state name mentions.
 
 If you are interested in this, please see [my blog post](https://wordpress.com/post/matthewdharris.com/4405) and [Julia's posts](http://juliasilge.com/blog/Bayesian-Blues/). **Note**: the code and analytical process here is based on [Silge's workflow](https://github.com/juliasilge/juliasilge.github.io/blob/master/_R/2016-09-28-Bayesian-Blues.Rmd), but alterations and additions were made to focus on these different aspects. Any errors, sloppiness, or misunderstandings are my own. Also, I am sure there are other way to model these data. I'd be happy to hear about them, but this post is intended to explore this particular method. Please contact me if you see errors and just to day hi. \[@md\_harris\])<https://twitter.com/Md_Harris>
 
@@ -260,7 +270,7 @@ Fun facts...
 
 ### Some interesting things about these data
 
-1.  States mentioned by their cities, but not the state itself
+#### 1. States mentioned by their cities, but not the state itself
 
 ``` r
 # Boston = most mentioned city without its state
@@ -294,238 +304,44 @@ kable(all_the_cities)
 | South Carolina | no no song                | ringo starr                        | Columbia     |
 | South Carolina | forgot about dre          | dr dre featuring eminem            | Charleston   |
 
-1.  What song mentions the most unique state names?
+#### 2. What song mentions the most unique state names?
 
 ``` r
 n_states_mentioned <- tidy_lyrics_state %>%
-  group_by(Song) %>%
+  group_by(Artist, Song) %>%
   dplyr::summarise(n = n()) %>%
-  arrange(desc(n))
+  arrange(desc(n)) %>%
+  ungroup() %>%
+  top_n(5)
+```
+
+    Selecting by n
+
+``` r
 kable(n_states_mentioned)
 ```
 
-| Song                                     |    n|
-|:-----------------------------------------|----:|
-| dani california                          |    7|
-| dazzey duks                              |    5|
-| country grammar hot shit                 |    4|
-| fly over states                          |    4|
-| city of new orleans                      |    3|
-| gimme gimme good lovin                   |    3|
-| pimpin all over the world                |    3|
-| all summer long                          |    2|
-| arizona                                  |    2|
-| california girls                         |    2|
-| empire state of mind                     |    2|
-| get back                                 |    2|
-| honey bee                                |    2|
-| ive never been to me                     |    2|
-| kids in america                          |    2|
-| living for the city                      |    2|
-| living in america                        |    2|
-| me and bobby mcgee                       |    2|
-| mississippi girl                         |    2|
-| mississippi queen                        |    2|
-| never been to spain                      |    2|
-| please come to boston                    |    2|
-| raise the roof                           |    2|
-| ramblin man                              |    2|
-| rockin roll baby                         |    2|
-| sugar gimme some                         |    2|
-| take me home country roads               |    2|
-| the boy from new york city               |    2|
-| the heart of rock roll                   |    2|
-| we didnt start the fire                  |    2|
-| yo"u and i                               |    2|
-| 21 questions                             |    1|
-| achy breaky heart                        |    1|
-| all eyes on you                          |    1|
-| allentown                                |    1|
-| american boy                             |    1|
-| american kids                            |    1|
-| amos moses                               |    1|
-| an american dream                        |    1|
-| anything                                 |    1|
-| arthurs theme best that you can do       |    1|
-| as good as i once was                    |    1|
-| ayo                                      |    1|
-| be like that                             |    1|
-| bedrock                                  |    1|
-| beer for my horses                       |    1|
-| best song ever                           |    1|
-| bette davis eyes                         |    1|
-| big pimpin                               |    1|
-| black velvet                             |    1|
-| black water                              |    1|
-| blown away                               |    1|
-| bounce with me                           |    1|
-| boys round here                          |    1|
-| bring em out                             |    1|
-| burnin it down                           |    1|
-| california dreamin                       |    1|
-| california gurls                         |    1|
-| california nights                        |    1|
-| cant nobody hold me down                 |    1|
-| change clothes                           |    1|
-| chicken fried                            |    1|
-| cold rock a party                        |    1|
-| colder weather                           |    1|
-| country boy you got your feet in la      |    1|
-| country girl shake it for me             |    1|
-| cruise                                   |    1|
-| da dip                                   |    1|
-| daydreamin                               |    1|
-| deacon blues                             |    1|
-| deja vu uptown baby                      |    1|
-| dont mean nothing                        |    1|
-| drive by                                 |    1|
-| drive for daddy gene                     |    1|
-| elevators me you                         |    1|
-| empty garden hey hey johnny              |    1|
-| eve of destruction                       |    1|
-| every girl                               |    1|
-| exs ohs                                  |    1|
-| flashing lights                          |    1|
-| forever                                  |    1|
-| funky nassau                             |    1|
-| funky worm                               |    1|
-| get money                                |    1|
-| get your shine on                        |    1|
-| ghetto cowboy                            |    1|
-| give it to me                            |    1|
-| gold                                     |    1|
-| good life                                |    1|
-| hard knock life ghetto anthem            |    1|
-| have you forgotten                       |    1|
-| hawaii fiveo                             |    1|
-| hazard                                   |    1|
-| hello                                    |    1|
-| here we go                               |    1|
-| hey there delilah                        |    1|
-| holiday                                  |    1|
-| hollywood nights                         |    1|
-| honky tonk women                         |    1|
-| hotel california                         |    1|
-| how do you like me now                   |    1|
-| how we do                                |    1|
-| im too sexy                              |    1|
-| in america                               |    1|
-| in da club                               |    1|
-| indiana wants me                         |    1|
-| international love                       |    1|
-| into you                                 |    1|
-| it never rains in southern california    |    1|
-| key west intermezzo i saw you first      |    1|
-| king of the road                         |    1|
-| kokomo                                   |    1|
-| ladies night                             |    1|
-| lawyers in love                          |    1|
-| leader of the band                       |    1|
-| lean back                                |    1|
-| leave me alone ruby red dress            |    1|
-| lets go all the way                      |    1|
-| lights camera action                     |    1|
-| livin la vida loca                       |    1|
-| long time gone                           |    1|
-| long train runnin                        |    1|
-| lookin out my back door                  |    1|
-| loungin                                  |    1|
-| love rollercoaster                       |    1|
-| mary janes last dance                    |    1|
-| me and you and a dog named boo           |    1|
-| meet virginia                            |    1|
-| message to michael                       |    1|
-| miami                                    |    1|
-| midnight train to georgia                |    1|
-| mockingbird                              |    1|
-| my boo                                   |    1|
-| native new yorker                        |    1|
-| new york groove                          |    1|
-| no diggity                               |    1|
-| no no no                                 |    1|
-| no no song                               |    1|
-| nobody told me                           |    1|
-| nothin on you                            |    1|
-| now that we found love                   |    1|
-| number one spot                          |    1|
-| oh boy                                   |    1|
-| on fire                                  |    1|
-| on the floor                             |    1|
-| one more chance                          |    1|
-| only                                     |    1|
-| patches                                  |    1|
-| people are crazy                         |    1|
-| pimp                                     |    1|
-| play it again                            |    1|
-| please mr please                         |    1|
-| poker face                               |    1|
-| polk salad annie                         |    1|
-| pop muzik                                |    1|
-| rainy night in georgia                   |    1|
-| ride wit me                              |    1|
-| riptide                                  |    1|
-| rocky mountain high                      |    1|
-| same girl                                |    1|
-| scar tissue                              |    1|
-| shake ya tailfeather                     |    1|
-| sittin on the dock of the bay            |    1|
-| someone                                  |    1|
-| southern hospitality                     |    1|
-| southside                                |    1|
-| stay fly                                 |    1|
-| stayin alive                             |    1|
-| sugar                                    |    1|
-| summer girls                             |    1|
-| sweater weather                          |    1|
-| sweetest girl dollar bill                |    1|
-| take the money and run                   |    1|
-| talk dirty                               |    1|
-| tennessee                                |    1|
-| the beach boys medley                    |    1|
-| the climb                                |    1|
-| the devil went down to georgia           |    1|
-| the motto                                |    1|
-| the next episode                         |    1|
-| the night the lights went out in georgia |    1|
-| the night they drove old dixie down      |    1|
-| the party continues                      |    1|
-| the show goes on                         |    1|
-| the world i know                         |    1|
-| this is why im hot                       |    1|
-| tighten up                               |    1|
-| tonight tonight                          |    1|
-| undercover of the night                  |    1|
-| up jumps da boogie                       |    1|
-| uptown funk                              |    1|
-| wagon wheel                              |    1|
-| westside                                 |    1|
-| what was i thinkin                       |    1|
-| whats your name                          |    1|
-| when a womans fed up                     |    1|
-| where have all the cowboys gone          |    1|
-| wildfire                                 |    1|
-| wildwood weed                            |    1|
-| woo hah got you all in check             |    1|
-| work hard play hard                      |    1|
-| you dont mess around with jim            |    1|
+| Artist                             | Song                      |    n|
+|:-----------------------------------|:--------------------------|----:|
+| red hot chili peppers              | dani california           |    7|
+| duice                              | dazzey duks               |    5|
+| jason aldean                       | fly over states           |    4|
+| nelly                              | country grammar hot shit  |    4|
+| arlo guthrie                       | city of new orleans       |    3|
+| crazy elephant                     | gimme gimme good lovin    |    3|
+| ludacris featuring bobby valentino | pimpin all over the world |    3|
 
 ``` r
+# Top song is...
 filter(tidy_lyrics_state, Song == as.character(n_states_mentioned[1,1])) %>%
   dplyr::select(Song, Artist, Year, state_name)
 ```
 
-    # A tibble: 7 × 4
-                 Song                Artist  Year   state_name
-                <chr>                 <chr> <int>        <chr>
-    1 dani california red hot chili peppers  2006      alabama
-    2 dani california red hot chili peppers  2006   california
-    3 dani california red hot chili peppers  2006      indiana
-    4 dani california red hot chili peppers  2006    louisiana
-    5 dani california red hot chili peppers  2006    minnesota
-    6 dani california red hot chili peppers  2006  mississippi
-    7 dani california red hot chili peppers  2006 north dakota
+    # A tibble: 0 × 4
+    # ... with 4 variables: Song <chr>, Artist <chr>, Year <int>,
+    #   state_name <chr>
 
-3 What song mentions a single state the most number of times?
+#### 3. What song mentions a single state the most number of times?
 
 ``` r
 most_repeated_in_song <- right_join(tidy_lyrics, pop_df,
