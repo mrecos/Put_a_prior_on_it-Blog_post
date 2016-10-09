@@ -839,7 +839,16 @@ Model Comparison
 
 There are lots of ways to compare which model is "better", but I am not going to go crazy with it. Log posteriors from the Stan models *can* be compared, but I do not believe they can be used for inference directly from the form they are reported from the fit. We could also do things like hold-out samples, cross-validations, Leave-One-Out CV, or use information criteria such as WAIC. [See Gelman](http://andrewgelman.com/2014/05/26/waic-cross-validation-stan/) and go down the rabbit hole from there.
 
-Here I take a simple approach and calculate a few metrics based a few things: \* Loss Metrics + Mean Absolute Error (MAE) + Root Mean Square Error (RMSE) \* Credible Interval (CI) + mean width of 95% CI \* Predicted Mentions + RMSE of expected mentions vs observed mentions + MAE of the same
+Here I take a simple approach and calculate a few metrics based a few things:
+
+-   Loss Metrics
+    -   Mean Absolute Error (MAE)
+    -   Root Mean Square Error (RMSE)
+-   Credible Interval (CI)
+    -   mean width of 95% CI
+-   Predicted Mentions
+    -   RMSE of expected mentions vs observed mentions
+    -   MAE of the same
 
 These result show that the state counts only model *may* have the slightest advantage over the states + cities counts, but it really is very small. For me, the choice of model would simply be which fits my purpose better; both are pretty darn good at estimating the number of mentions. the MAE of expected mentions per state is less than 0.2 of a mention; rounded down to no real error at all in that category. The beta distribution accurately described these data
 

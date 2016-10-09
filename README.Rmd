@@ -521,6 +521,7 @@ state_city_estimates %>%
 There are lots of ways to compare which model is "better", but I am not going to go crazy with it.  Log posteriors from the Stan models *can* be compared, but I do not believe they can be used for inference directly from the form they are reported from the fit.  We could also do things like hold-out samples, cross-validations, Leave-One-Out CV, or use information criteria such as WAIC.  [See Gelman](http://andrewgelman.com/2014/05/26/waic-cross-validation-stan/) and go down the rabbit hole from there. 
 
 Here I take a simple approach and calculate a few metrics based a few things:
+
 * Loss Metrics
     + Mean Absolute Error (MAE)
     + Root Mean Square Error (RMSE)
