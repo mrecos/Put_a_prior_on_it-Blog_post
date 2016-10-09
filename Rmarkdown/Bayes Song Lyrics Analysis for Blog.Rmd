@@ -38,14 +38,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-## Estimating a Beta Distribution with Stan HMC
+## Introduction
+### Estimating a Beta Distribution with Stan HMC
 #### Repository for data, analysis (markdown), and R code
 
-
-## Introduction
 This is a repo to hold the data and code for [my blog post](https://wordpress.com/post/matthewdharris.com/4405) based on Julia Silge's [*Singing the Bayesian Beginner Blues*](http://juliasilge.com/blog/Bayesian-Blues/). The post by Silge is a really fun and interesting analysis of the rate at which song lyrics from *Billboard Hot-100* songs (1958 to present) mention U.S. States by name. In her second post on the subject, Silge used a beta distribution to model this rate.  After reading that post, I was inspired to learn more about her method and to follow up on this model with my interests in Bayesian modeling with [Stan](http://mc-stan.org/), a probabilistic programming language.  I hoped to repeat Silge's findings while learning how to code her model in Stan.  This was also a fun opportunity to work on more `dplyr` data munging techniques.  The result was a good learning experience and perhaps a few additional insights into the distribution of state name mentions.  
 
-If you are interested in this, please see [my blog post](https://wordpress.com/post/matthewdharris.com/4405)  and [Julia's posts](http://juliasilge.com/blog/Bayesian-Blues/). **Note**: the code and analytical process here is based on [Silge's workflow](https://github.com/juliasilge/juliasilge.github.io/blob/master/_R/2016-09-28-Bayesian-Blues.Rmd), but alterations and additions were made to focus on these different aspects.  Any errors, sloppiness, or misunderstandings are my own.  Also, I am sure there are other way to model these data.  I'd be happy to hear about them, but this post is intended to explore this particular method.  Please contact me if you see errors and just to day hi. [@md_harris])https://twitter.com/Md_Harris
+If you are interested in this, please see [my blog post](https://wordpress.com/post/matthewdharris.com/4405)  and [Julia's posts](http://juliasilge.com/blog/Bayesian-Blues/). **Note**: the code and analytical process here is based on [Silge's workflow](https://github.com/juliasilge/juliasilge.github.io/blob/master/_R/2016-09-28-Bayesian-Blues.Rmd), but alterations and additions were made to focus on different aspects.  Any errors, sloppiness, or misunderstandings are my own.  Also, I am sure there are other ways to model these data and while I'd be very happy to hear about them, this post is intended to explore this particular method.  Please contact me if you see errors and just to say hi. [@md_harris])https://twitter.com/Md_Harris
 
 ### Differences from Silge's Analysis
 1. Is zero inflated to include states not mentioned in lyrics
