@@ -186,7 +186,7 @@ print(state_counts)
     10    illinois     6    Illinois 12868747 0.04662469
     # ... with 23 more rows
 
-#### Do the same as above, but for states.
+#### Do the same as above, but for cities
 
 Note the use of `inner_join` here because I am not interested in cities that are not mentioned.
 
@@ -479,13 +479,27 @@ plot distribution of parameters to see dispersal and correlation
 
 ``` r
 ggplot(data.frame(opt1$theta_tilde), aes(x = alpha0, y = beta0)) +
+  geom_point(color = "skyblue3", alpha = 0.35) +
   geom_density2d(aes(colour =..level..)) + 
   scale_colour_gradient(low="gray80",high="firebrick") + 
-  geom_point(color = "skyblue3", alpha = 0.35) + 
+  scale_x_continuous(breaks = seq(0,0.3,0.025)) +
+  scale_y_continuous(breaks = seq(0,7,0.5)) +
   theme_bw() +
-  theme(
-    legend.position = "none"
-  )
+    labs(x = "alpha0",
+       y = "beta0",
+       title = "Distribution of Alpa and Beta Shape Parameters",
+       subtitle = "2500 samples from MLE optimized beta model posterior") +
+ theme(
+    panel.border = element_rect(colour = "gray90"),
+    axis.text.x = element_text(size = 8, family = "Trebuchet MS"),
+    axis.text.y = element_text(size = 8, family = "Trebuchet MS"),
+    axis.title = element_text(size = 10, family = "Trebuchet MS"),
+    plot.caption = element_text(size = 7, hjust=0, margin=margin(t=5), 
+                                family = "Trebuchet MS"),
+    plot.title=element_text(family="TrebuchetMS-Bold"),
+    legend.position = "none",
+    panel.grid.minor = element_blank()
+    )
 ```
 
 <img src="README_files/figure-markdown_github/param_plot-1.png" style="display: block; margin: auto;" />
@@ -630,6 +644,7 @@ state_estimates <- rstan::extract(fit1_pred, pars = "x_tilde") %>%
 
 ### could melt and add q025,q5,q975 by color/shape
 ### could also predict across range of rates and show areas
+
 ggplot(state_estimates, aes(rate, mean, color = n)) +
   geom_abline(intercept = 0, slope = 1, color = "gray70", linetype = 2) +
   # geom_text_repel(aes(rate, mean, label = state_name)) +
