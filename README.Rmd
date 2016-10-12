@@ -47,6 +47,7 @@ library("acs")
 library("reshape2")
 library("readr")
 library("tidytext")
+library("scales")
 library("ggplot2")
 library("ggrepel")
 library("broom")
@@ -63,6 +64,7 @@ library("knitr")
 3. Load `./data/cities_over_100k_pop.csv`, names of cities with >= 100k population
     i) UNCOMMENT that line `download.file(lyrics_url, save_lyrics_loc)` to run
     ii) you may have to adjust the path
+4. Load state name abbreviation for simplifying the plots later
 ```{r get_data, comment = '', cache=TRUE }
 #api.key.install("YOUR KEY HERE!")
 ## population data
@@ -78,6 +80,8 @@ save_lyrics_loc <- "~/Documents/R_Local/Put_a_prior_on_it-Blog_post/data/billboa
 # download.file(lyrics_url, save_lyrics_loc)
 song_lyrics <- read_csv(save_lyrics_loc)
 cities_dat_loc <- "~/Documents/R_Local/Put_a_prior_on_it-Blog_post/data/cities_over_100k_pop.csv"
+state_abbrev_loc <- "~/Documents/R_Local/Put_a_prior_on_it-Blog_post/data/state_abbrev.csv"
+state_abbrev <- read_csv(state_abbrev_loc)
 ```
 
 
@@ -87,11 +91,12 @@ The `tidytext` package uses `unnest_tokens` to do the heavy lifting here.  Thank
 ```{r population_data,comment = ''}
 # extract desired info from acs data
 pop_df <- tbl_df(melt(estimate(popfetch))) %>%
-  mutate(name = Var1,
+  mutate(name = as.character(Var1),
          state_name = tolower(Var1),
          pop2014 = value) %>%
   dplyr::select(name, state_name, pop2014) %>%
-  filter(state_name != "puerto rico")
+  filter(state_name != "puerto rico") %>%
+  left_join(state_abbrev)
 
 # clean in city names
 cities <- read_csv(cities_dat_loc) %>%
@@ -135,7 +140,7 @@ state_counts_zeros <- tidy_lyrics_state_zeros %>%
 
 # create another data set with 
 state_counts <- filter(state_counts_zeros, rate > zero_rate)
-print(state_counts)
+print(dplyr::select(state_counts, state_name, n ,pop2014, rate))
 ```
 
 
@@ -302,7 +307,7 @@ ggplot(data.frame(opt1$theta_tilde), aes(x = alpha0, y = beta0)) +
   theme_bw() +
     labs(x = "alpha0",
        y = "beta0",
-       title = "Distribution of Alpa and Beta Shape Parameters",
+       title = "Distribution of Alpha and Beta Shape Parameters",
        subtitle = "2500 samples from MLE optimized beta model posterior") +
  theme(
     panel.border = element_rect(colour = "gray90"),
@@ -382,7 +387,6 @@ kable(fit1_pred_summary, digits = 3)
 
 
 #### Realtionship of Bayesian to observed estimate
-The plot design here is based entirely on Silge's visualization
 ```{r state_estimate, message=FALSE, warning=FALSE, comment='', fig.height=6, fig.width=6, fig.align="center"}
 state_estimates <- rstan::extract(fit1_pred, pars = "x_tilde") %>%
   data.frame() %>%
@@ -395,20 +399,27 @@ state_estimates <- rstan::extract(fit1_pred, pars = "x_tilde") %>%
                    q975 = quantile(value, probs = 0.975),
                    mean = mean(value)) %>%
   left_join(.,state_counts_zeros)
+```
 
+
+The plot design here is based entirely on Silge's visualization
+```{r post_pred_state_plot, comment=''}
 ### could melt and add q025,q5,q975 by color/shape
 ### could also predict across range of rates and show areas
 
-ggplot(state_estimates, aes(rate, mean, color = n)) +
+ggplot(state_estimates, aes(rate, mean)) +
   geom_abline(intercept = 0, slope = 1, color = "gray70", linetype = 2) +
-  # geom_text_repel(aes(rate, mean, label = state_name)) +
-  geom_point(size = 4) +
+  geom_point(size = 4, aes(color = n)) +
+  geom_text_repel(aes(label = abbrev), stat = "identity",
+                  point.padding = unit(0.5, "lines"),
+                  max.iter = 5000) +
   scale_color_gradient(low = "midnightblue", high = "pink",
                        name="Number\nof songs") +
   labs(title = "States in Song Lyrics with Empirical Bayes",
        subtitle = "States like Montana and Hawaii (high rates, few mentions) are shifted the most",
        x = "Measured rate of mentions per 100k population",
-       y = "Empirical Bayes estimate of rate per 100k population") +
+       y = "Mean predicted rate per 100k population",
+       caption = "plot design by @juliasilge") +
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS"))
 ```
@@ -416,7 +427,7 @@ ggplot(state_estimates, aes(rate, mean, color = n)) +
 
 #### Bayesian vs. Observed estimate and 95% CI by state
 The plot design here is based entirely on Silge's visualization
-```{r state_estim_plot, comment='', fig.height=8, fig.width=6, fig.align="center"}
+```{r state_estim_plot, comment='', fig.height=8, fig.width=7, fig.align="center"}
 state_estimates %>% 
   arrange(desc(mean)) %>% 
   mutate(state_name = factor(name, levels = rev(unique(name)))) %>%
@@ -427,9 +438,10 @@ state_estimates %>%
   geom_errorbarh(aes(xmin = q025, xmax = q975), color = "gray50") +
   geom_point(size = 3) +
   xlim(0, NA) +
-  labs(x = "Rate of mentions per million population",
-       y = NULL, title = "Measured Rates, Bayesian Estimates (MCMC), and Credible Intervals",
-       subtitle = "The 95% credible intervals are shown for these states") +
+   labs(x = "Rate of mentions per 100k population",
+       y = NULL, title = "Measured Rates, Bayesian Estimates (HMC), and 95% Credible Intervals",
+       subtitle = "Mention rate for states sorted by descending posterior mean",
+       caption = "plot design by @juliasilge") +
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS", face = "bold")) +
   theme(legend.title=element_blank())
@@ -493,16 +505,19 @@ The plot design here is based entirely on Silge's visualization
 ```{r state_city_dot_plot, comment='', fig.height=6, fig.width=6, fig.align="center"}
 ### could melt and add q025,q5,q975 by color/shape
 ### could also predict across range of rates and show areas
-ggplot(state_city_estimates, aes(city_state_rate, mean, color = n_city_state)) +
+ggplot(state_city_estimates, aes(city_state_rate, mean)) +
   geom_abline(intercept = 0, slope = 1, color = "gray70", linetype = 2) +
-  # geom_text_repel(aes(rate, mean, label = state_name)) +
-  geom_point(size = 4) +
+  geom_point(size = 4, aes(color = n_city_state)) +
+  geom_text_repel(aes(label = abbrev), stat = "identity",
+                  point.padding = unit(0.5, "lines"),
+                  max.iter = 5000) +
   scale_color_gradient(low = "midnightblue", high = "pink",
                        name="Number\nof songs") +
-  labs(title = "States in Song Lyrics with Empirical Bayes",
-       subtitle = "States like Montana and Hawaii (high rates, few mentions) are shifted the most",
+  labs(title = "States & Cities in Song Lyrics Modeled with Bayes (HMC)",
+       subtitle = "States like Nebraska and Hawaii (high rates, few mentions) are shifted the most",
        x = "Measured rate of mentions per 100k population",
-       y = "Empirical Bayes estimate of rate per 100k population") +
+       y = "Mean predicted rate per 100k population",
+       caption = "plot design by @juliasilge") +
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS"))
 ```
@@ -510,7 +525,7 @@ ggplot(state_city_estimates, aes(city_state_rate, mean, color = n_city_state)) +
 
 #### Bayesian vs. Observed state + city estimate and 95% CI by state
 The plot design here is based entirely on Silge's visualization
-```{r state_city_range_plot, comment='', fig.height=8, fig.width=6, fig.align="center"}
+```{r state_city_range_plot, comment='', fig.height=8, fig.width=7, fig.align="center"}
 ### range estiamtes plot
 state_city_estimates %>% 
   arrange(desc(mean)) %>% 
@@ -523,8 +538,9 @@ state_city_estimates %>%
   geom_point(size = 3) +
   xlim(0, NA) +
   labs(x = "Rate of mentions per 100k population",
-       y = NULL, title = "Measured Rates, Bayesian Estimates (MCMC), and Credible Intervals",
-       subtitle = "The 95% credible intervals are shown for these states") +
+       y = NULL, title = "Measured Rates, Bayesian Estimates (HMC), and 95% Credible Intervals",
+       subtitle = "Mention rate for states & cities sorted by descending posterior mean",
+       caption = "plot design by @juliasilge") +
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS", face = "bold")) +
   theme(legend.title=element_blank())
@@ -581,9 +597,17 @@ model_rmse <- data.frame(model = c("States Only", "City and States"),
            MAE_mentions =  c(state_error[5], city_state_error[5]))
 kable(model_rmse, digits = 3)
 ```
+  
+  
+  
+  
+### Thanks for reading!!!!  
+  
+  
+  
+  
+### Environment  
+```{r session_info, comment=''}
+sessionInfo()
+```
 
-
-
-
-
-### Thanks for reading!!!!

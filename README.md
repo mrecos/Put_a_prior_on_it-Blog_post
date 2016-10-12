@@ -51,6 +51,7 @@ library("acs")
 library("reshape2")
 library("readr")
 library("tidytext")
+library("scales")
 library("ggplot2")
 library("ggrepel")
 library("broom")
@@ -69,6 +70,8 @@ Get Data
 3.  Load `./data/cities_over_100k_pop.csv`, names of cities with &gt;= 100k population
     1.  UNCOMMENT that line `download.file(lyrics_url, save_lyrics_loc)` to run
     2.  you may have to adjust the path
+
+4.  Load state name abbreviation for simplifying the plots later
 
 ``` r
 #api.key.install("YOUR KEY HERE!")
@@ -98,7 +101,15 @@ song_lyrics <- read_csv(save_lyrics_loc)
 
 ``` r
 cities_dat_loc <- "~/Documents/R_Local/Put_a_prior_on_it-Blog_post/data/cities_over_100k_pop.csv"
+state_abbrev_loc <- "~/Documents/R_Local/Put_a_prior_on_it-Blog_post/data/state_abbrev.csv"
+state_abbrev <- read_csv(state_abbrev_loc)
 ```
+
+    Parsed with column specification:
+    cols(
+      name = col_character(),
+      abbrev = col_character()
+    )
 
 Join, mutate, and munge the data
 --------------------------------
@@ -110,12 +121,17 @@ The `tidytext` package uses `unnest_tokens` to do the heavy lifting here. Thanks
 ``` r
 # extract desired info from acs data
 pop_df <- tbl_df(melt(estimate(popfetch))) %>%
-  mutate(name = Var1,
+  mutate(name = as.character(Var1),
          state_name = tolower(Var1),
          pop2014 = value) %>%
   dplyr::select(name, state_name, pop2014) %>%
-  filter(state_name != "puerto rico")
+  filter(state_name != "puerto rico") %>%
+  left_join(state_abbrev)
+```
 
+    Joining, by = "name"
+
+``` r
 # clean in city names
 cities <- read_csv(cities_dat_loc) %>%
   mutate(city = gsub("\x96", "-", city),
@@ -168,22 +184,22 @@ state_counts_zeros <- tidy_lyrics_state_zeros %>%
 
 # create another data set with 
 state_counts <- filter(state_counts_zeros, rate > zero_rate)
-print(state_counts)
+print(dplyr::select(state_counts, state_name, n ,pop2014, rate))
 ```
 
-    # A tibble: 33 × 5
-        state_name     n        name  pop2014       rate
-             <chr> <dbl>      <fctr>    <dbl>      <dbl>
-    1     new york    61    New York 19594330 0.31131465
-    2   california    34  California 38066920 0.08931649
-    3      georgia    22     Georgia  9907756 0.22204836
-    4    tennessee    14   Tennessee  6451365 0.21700844
-    5        texas    13       Texas 26092033 0.04982374
-    6      alabama    12     Alabama  4817678 0.24908275
-    7  mississippi    10 Mississippi  2984345 0.33508200
-    8     kentucky     7    Kentucky  4383272 0.15969815
-    9       hawaii     6      Hawaii  1392704 0.43081670
-    10    illinois     6    Illinois 12868747 0.04662469
+    # A tibble: 33 × 4
+        state_name     n  pop2014       rate
+             <chr> <dbl>    <dbl>      <dbl>
+    1     new york    61 19594330 0.31131465
+    2   california    34 38066920 0.08931649
+    3      georgia    22  9907756 0.22204836
+    4    tennessee    14  6451365 0.21700844
+    5        texas    13 26092033 0.04982374
+    6      alabama    12  4817678 0.24908275
+    7  mississippi    10  2984345 0.33508200
+    8     kentucky     7  4383272 0.15969815
+    9       hawaii     6  1392704 0.43081670
+    10    illinois     6 12868747 0.04662469
     # ... with 23 more rows
 
 #### Do the same as above, but for cities
@@ -487,7 +503,7 @@ ggplot(data.frame(opt1$theta_tilde), aes(x = alpha0, y = beta0)) +
   theme_bw() +
     labs(x = "alpha0",
        y = "beta0",
-       title = "Distribution of Alpa and Beta Shape Parameters",
+       title = "Distribution of Alpha and Beta Shape Parameters",
        subtitle = "2500 samples from MLE optimized beta model posterior") +
  theme(
     panel.border = element_rect(colour = "gray90"),
@@ -627,8 +643,6 @@ kable(fit1_pred_summary, digits = 3)
 
 #### Realtionship of Bayesian to observed estimate
 
-The plot design here is based entirely on Silge's visualization
-
 ``` r
 state_estimates <- rstan::extract(fit1_pred, pars = "x_tilde") %>%
   data.frame() %>%
@@ -641,25 +655,32 @@ state_estimates <- rstan::extract(fit1_pred, pars = "x_tilde") %>%
                    q975 = quantile(value, probs = 0.975),
                    mean = mean(value)) %>%
   left_join(.,state_counts_zeros)
+```
 
+The plot design here is based entirely on Silge's visualization
+
+``` r
 ### could melt and add q025,q5,q975 by color/shape
 ### could also predict across range of rates and show areas
 
-ggplot(state_estimates, aes(rate, mean, color = n)) +
+ggplot(state_estimates, aes(rate, mean)) +
   geom_abline(intercept = 0, slope = 1, color = "gray70", linetype = 2) +
-  # geom_text_repel(aes(rate, mean, label = state_name)) +
-  geom_point(size = 4) +
+  geom_point(size = 4, aes(color = n)) +
+  geom_text_repel(aes(label = abbrev), stat = "identity",
+                  point.padding = unit(0.5, "lines"),
+                  max.iter = 5000) +
   scale_color_gradient(low = "midnightblue", high = "pink",
                        name="Number\nof songs") +
   labs(title = "States in Song Lyrics with Empirical Bayes",
        subtitle = "States like Montana and Hawaii (high rates, few mentions) are shifted the most",
        x = "Measured rate of mentions per 100k population",
-       y = "Empirical Bayes estimate of rate per 100k population") +
+       y = "Mean predicted rate per 100k population",
+       caption = "plot design by @juliasilge") +
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS"))
 ```
 
-<img src="README_files/figure-markdown_github/state_estimate-1.png" style="display: block; margin: auto;" />
+![](README_files/figure-markdown_github/post_pred_state_plot-1.png)
 
 #### Bayesian vs. Observed estimate and 95% CI by state
 
@@ -676,9 +697,10 @@ state_estimates %>%
   geom_errorbarh(aes(xmin = q025, xmax = q975), color = "gray50") +
   geom_point(size = 3) +
   xlim(0, NA) +
-  labs(x = "Rate of mentions per million population",
-       y = NULL, title = "Measured Rates, Bayesian Estimates (MCMC), and Credible Intervals",
-       subtitle = "The 95% credible intervals are shown for these states") +
+   labs(x = "Rate of mentions per 100k population",
+       y = NULL, title = "Measured Rates, Bayesian Estimates (HMC), and 95% Credible Intervals",
+       subtitle = "Mention rate for states sorted by descending posterior mean",
+       caption = "plot design by @juliasilge") +
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS", face = "bold")) +
   theme(legend.title=element_blank())
@@ -805,16 +827,19 @@ The plot design here is based entirely on Silge's visualization
 ``` r
 ### could melt and add q025,q5,q975 by color/shape
 ### could also predict across range of rates and show areas
-ggplot(state_city_estimates, aes(city_state_rate, mean, color = n_city_state)) +
+ggplot(state_city_estimates, aes(city_state_rate, mean)) +
   geom_abline(intercept = 0, slope = 1, color = "gray70", linetype = 2) +
-  # geom_text_repel(aes(rate, mean, label = state_name)) +
-  geom_point(size = 4) +
+  geom_point(size = 4, aes(color = n_city_state)) +
+  geom_text_repel(aes(label = abbrev), stat = "identity",
+                  point.padding = unit(0.5, "lines"),
+                  max.iter = 5000) +
   scale_color_gradient(low = "midnightblue", high = "pink",
                        name="Number\nof songs") +
-  labs(title = "States in Song Lyrics with Empirical Bayes",
-       subtitle = "States like Montana and Hawaii (high rates, few mentions) are shifted the most",
+  labs(title = "States & Cities in Song Lyrics Modeled with Bayes (HMC)",
+       subtitle = "States like Nebraska and Hawaii (high rates, few mentions) are shifted the most",
        x = "Measured rate of mentions per 100k population",
-       y = "Empirical Bayes estimate of rate per 100k population") +
+       y = "Mean predicted rate per 100k population",
+       caption = "plot design by @juliasilge") +
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS"))
 ```
@@ -838,8 +863,9 @@ state_city_estimates %>%
   geom_point(size = 3) +
   xlim(0, NA) +
   labs(x = "Rate of mentions per 100k population",
-       y = NULL, title = "Measured Rates, Bayesian Estimates (MCMC), and Credible Intervals",
-       subtitle = "The 95% credible intervals are shown for these states") +
+       y = NULL, title = "Measured Rates, Bayesian Estimates (HMC), and 95% Credible Intervals",
+       subtitle = "Mention rate for states & cities sorted by descending posterior mean",
+       caption = "plot design by @juliasilge") +
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS", face = "bold")) +
   theme(legend.title=element_blank())
@@ -906,3 +932,44 @@ kable(model_rmse, digits = 3)
 | City and States |       0.012|      0.008|       0.182|           0.292|          0.196|
 
 ### Thanks for reading!!!!
+
+### Environment
+
+``` r
+sessionInfo()
+```
+
+    R version 3.3.1 (2016-06-21)
+    Platform: x86_64-apple-darwin13.4.0 (64-bit)
+    Running under: OS X 10.10.5 (Yosemite)
+
+    locale:
+    [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+    attached base packages:
+    [1] tools     grid      stats     graphics  grDevices utils     datasets 
+    [8] methods   base     
+
+    other attached packages:
+     [1] knitr_1.14         rstan_2.11.1       StanHeaders_2.11.0
+     [4] fitdistrplus_1.0-7 survival_2.39-4    MASS_7.3-45       
+     [7] broom_0.4.1        ggrepel_0.6.2      scales_0.4.0.9003 
+    [10] tidytext_0.1.1     reshape2_1.4.1     acs_2.0           
+    [13] XML_3.98-1.4       plyr_1.8.4         stringr_1.1.0     
+    [16] purrr_0.2.2        readr_1.0.0        tidyr_0.6.0       
+    [19] tibble_1.2         tidyverse_1.0.0    dplyr_0.5.0       
+    [22] ggplot2_2.1.0.9001
+
+    loaded via a namespace (and not attached):
+     [1] Rcpp_0.12.7       highr_0.6         formatR_1.4      
+     [4] bitops_1.0-6      tokenizers_0.1.4  digest_0.6.10    
+     [7] evaluate_0.9      gtable_0.2.0      nlme_3.1-128     
+    [10] lattice_0.20-33   psych_1.6.9       Matrix_1.2-6     
+    [13] DBI_0.5           parallel_3.3.1    yaml_2.1.13      
+    [16] gridExtra_2.2.1   janeaustenr_0.1.2 stats4_3.3.1     
+    [19] inline_0.3.14     R6_2.1.3          foreign_0.8-66   
+    [22] rmarkdown_1.0     magrittr_1.5      codetools_0.2-14 
+    [25] splines_3.3.1     SnowballC_0.5.1   htmltools_0.3.5  
+    [28] mnormt_1.5-4      assertthat_0.1    colorspace_1.2-6 
+    [31] labeling_0.3      stringi_1.1.1     RCurl_1.95-4.8   
+    [34] lazyeval_0.2.0    munsell_0.4.3
