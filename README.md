@@ -11,6 +11,7 @@ MDH
 -   [Hamiltonian Monte Carlo (HMC)](#hamiltonian-monte-carlo-hmc)
 -   [Adding City Counts](#adding-city-counts)
 -   [Model Comparison](#model-comparison)
+-   [Create R scipt](#create-r-scipt)
 
 Introduction
 ------------
@@ -58,6 +59,7 @@ library("broom")
 library("fitdistrplus")
 library("rstan")
 library("knitr")
+library("rmarkdown")
 ```
 
 Get Data
@@ -213,7 +215,8 @@ tidy_lyrics_city <- inner_join(tidy_lyrics, cities,
                                by = c("lyric" = "city_name")) %>%
   distinct(Song, Artist, lyric, .keep_all = TRUE) %>%
   filter(!city %in% c("Surprise", "Hollywood", 
-                      "District of Columbia", "Jackson")) %>%
+                      "District of Columbia", "Jackson",
+                    "Independence")) %>%
   mutate(cnt = ifelse(is.na(Source), 0, 1)) %>%
   dplyr::rename(city_name = lyric)
 
@@ -225,7 +228,7 @@ city_counts <- tidy_lyrics_city %>%
 print(city_counts)
 ```
 
-    # A tibble: 85 × 2
+    # A tibble: 84 × 2
          city_name     n
              <chr> <dbl>
     1     new york    61
@@ -238,7 +241,7 @@ print(city_counts)
     8       orange     9
     9      detroit     7
     10      dallas     6
-    # ... with 75 more rows
+    # ... with 74 more rows
 
 ``` r
 # count of states that host the cities mentioned
@@ -304,9 +307,7 @@ kable(all_the_cities)
 | Massachusetts  | hey nineteen              | steely dan                         | Boston       |
 | Massachusetts  | the heart of rock roll    | huey lewis and the news            | Boston       |
 | Massachusetts  | dazzey duks               | duice                              | Boston       |
-| Missouri       | help                      | the beatles                        | Independence |
 | Missouri       | georgy girl               | the seekers                        | Springfield  |
-| Missouri       | miss independent          | kelly clarkson                     | Independence |
 | Missouri       | living in america         | james brown                        | Kansas City  |
 | New Mexico     | bring em out              | ti                                 | Albuquerque  |
 | North Carolina | hush hush sweet charlotte | patti page                         | Charlotte    |
@@ -929,7 +930,18 @@ kable(model_rmse, digits = 3)
 | model           |  RMSE\_rate|  MAE\_rate|  Median\_CI|  RMSE\_mentions|  MAE\_mentions|
 |:----------------|-----------:|----------:|-----------:|---------------:|--------------:|
 | States Only     |       0.013|      0.007|       0.111|           0.246|          0.174|
-| City and States |       0.012|      0.008|       0.182|           0.292|          0.196|
+| City and States |       0.013|      0.008|       0.182|           0.416|          0.236|
+
+Create R scipt
+--------------
+
+From this markdown, I use the `purl()` function in the `rmarkdown` package to extract the code. This is run just after the `*.Rmd` file is created. Otherwise, it trys to read an already open file and fails to `knit()`
+
+``` r
+rmd_loc <- "/Users/mattharris/Documents/R_Local/Put_a_prior_on_it-Blog_post/"
+# purl(input  = paste0(rmd_loc, "README.Rmd"), 
+#     output = paste0(rmd_loc, "R_script/README_r_script.R"))
+```
 
 ### Thanks for reading!!!!
 
@@ -951,14 +963,14 @@ sessionInfo()
     [8] methods   base     
 
     other attached packages:
-     [1] knitr_1.14         rstan_2.11.1       StanHeaders_2.11.0
-     [4] fitdistrplus_1.0-7 survival_2.39-4    MASS_7.3-45       
-     [7] broom_0.4.1        ggrepel_0.6.2      scales_0.4.0.9003 
-    [10] tidytext_0.1.1     reshape2_1.4.1     acs_2.0           
-    [13] XML_3.98-1.4       plyr_1.8.4         stringr_1.1.0     
-    [16] purrr_0.2.2        readr_1.0.0        tidyr_0.6.0       
-    [19] tibble_1.2         tidyverse_1.0.0    dplyr_0.5.0       
-    [22] ggplot2_2.1.0.9001
+     [1] rmarkdown_1.0      knitr_1.14         rstan_2.11.1      
+     [4] StanHeaders_2.11.0 fitdistrplus_1.0-7 survival_2.39-4   
+     [7] MASS_7.3-45        broom_0.4.1        ggrepel_0.6.2     
+    [10] scales_0.4.0.9003  tidytext_0.1.1     reshape2_1.4.1    
+    [13] acs_2.0            XML_3.98-1.4       plyr_1.8.4        
+    [16] stringr_1.1.0      purrr_0.2.2        readr_1.0.0       
+    [19] tidyr_0.6.0        tibble_1.2         tidyverse_1.0.0   
+    [22] dplyr_0.5.0        ggplot2_2.1.0.9001
 
     loaded via a namespace (and not attached):
      [1] Rcpp_0.12.7       highr_0.6         formatR_1.4      
@@ -968,8 +980,8 @@ sessionInfo()
     [13] DBI_0.5           parallel_3.3.1    yaml_2.1.13      
     [16] gridExtra_2.2.1   janeaustenr_0.1.2 stats4_3.3.1     
     [19] inline_0.3.14     R6_2.1.3          foreign_0.8-66   
-    [22] rmarkdown_1.0     magrittr_1.5      codetools_0.2-14 
-    [25] splines_3.3.1     SnowballC_0.5.1   htmltools_0.3.5  
-    [28] mnormt_1.5-4      assertthat_0.1    colorspace_1.2-6 
-    [31] labeling_0.3      stringi_1.1.1     RCurl_1.95-4.8   
-    [34] lazyeval_0.2.0    munsell_0.4.3
+    [22] magrittr_1.5      codetools_0.2-14  splines_3.3.1    
+    [25] SnowballC_0.5.1   htmltools_0.3.5   mnormt_1.5-4     
+    [28] assertthat_0.1    colorspace_1.2-6  labeling_0.3     
+    [31] stringi_1.1.1     RCurl_1.95-4.8    lazyeval_0.2.0   
+    [34] munsell_0.4.3

@@ -54,6 +54,7 @@ library("broom")
 library("fitdistrplus")
 library("rstan")
 library("knitr")
+library("rmarkdown")
 ```
 
 
@@ -153,7 +154,8 @@ tidy_lyrics_city <- inner_join(tidy_lyrics, cities,
                                by = c("lyric" = "city_name")) %>%
   distinct(Song, Artist, lyric, .keep_all = TRUE) %>%
   filter(!city %in% c("Surprise", "Hollywood", 
-                      "District of Columbia", "Jackson")) %>%
+                      "District of Columbia", "Jackson",
+                    "Independence")) %>%
   mutate(cnt = ifelse(is.na(Source), 0, 1)) %>%
   dplyr::rename(city_name = lyric)
 
@@ -599,8 +601,16 @@ kable(model_rmse, digits = 3)
 ```
   
   
-  
-  
+## Create R scipt
+From this markdown, I use the `purl()` function in the `rmarkdown` package to extract the code. This is run just after the `*.Rmd` file is created.  Otherwise, it trys to read an already open file and fails to `knit()`
+```{r purl, comment=''}
+rmd_loc <- "/Users/mattharris/Documents/R_Local/Put_a_prior_on_it-Blog_post/"
+# purl(input  = paste0(rmd_loc, "README.Rmd"), 
+#     output = paste0(rmd_loc, "R_script/README_r_script.R"))
+```
+ 
+ 
+ 
 ### Thanks for reading!!!!  
   
   
@@ -610,4 +620,5 @@ kable(model_rmse, digits = 3)
 ```{r session_info, comment=''}
 sessionInfo()
 ```
+
 

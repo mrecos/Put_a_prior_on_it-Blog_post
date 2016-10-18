@@ -1,71 +1,4 @@
----
-title: "Puttin'a Prior on It: Stan Beta Estmation of Song Lyrics"
-author: "MDH"
-date: "10/6/2016"
-output: html_document
----
-<STYLE TYPE="text/css">
-<!--
- {
-        color: #999999;
-        border-width: 1px;
-        border-color: #ffffff;
-        border-collapse: collapse;
-    }
-     th {
-        border-width: 1px;
-        padding: 8px;
-        border-style: solid;
-        border-color: #ECF0F1;
-        background-color: #ECF0F1;
-    }
-     tr:hover td {
-        background-color: #ECF0F1;
-        border-color: #ECF0F1;
-    }
-     td {
-        border-width: 1px;
-        padding: 8px;
-        border-style: solid;
-        border-color: #ffffff;
-        background-color: #ffffff;
---->
-</STYLE>
-
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-
-## Introduction
-### Estimating a Beta Distribution with Stan HMC
-#### Repository for data, analysis (markdown), and R code
-
-This is a repo to hold the data and code for [my blog post](https://wordpress.com/post/matthewdharris.com/4405) based on Julia Silge's [*Singing the Bayesian Beginner Blues*](http://juliasilge.com/blog/Bayesian-Blues/). The post by Silge is a really fun and interesting analysis of the rate at which song lyrics from *Billboard Hot-100* songs (1958 to present) mention U.S. States by name. In her second post on the subject, Silge used a beta distribution to model this rate.  After reading that post, I was inspired to learn more about her method and to follow up on this model with my interests in Bayesian modeling with [Stan](http://mc-stan.org/), a probabilistic programming language.  I hoped to repeat Silge's findings while learning how to code her model in Stan.  This was also a fun opportunity to work on more `dplyr` data munging techniques.  The result was a good learning experience and perhaps a few additional insights into the distribution of state name mentions.  
-
-If you are interested in this, please see [my blog post](https://wordpress.com/post/matthewdharris.com/4405)  and [Julia's posts](http://juliasilge.com/blog/Bayesian-Blues/). **Note**: the code and analytical process here is based on [Silge's workflow](https://github.com/juliasilge/juliasilge.github.io/blob/master/_R/2016-09-28-Bayesian-Blues.Rmd), but alterations and additions were made to focus on different aspects.  Any errors, sloppiness, or misunderstandings are my own.  Also, I am sure there are other ways to model these data and while I'd be very happy to hear about them, this post is intended to explore this particular method.  Please contact me if you see errors and just to say hi. [@md_harris](https://twitter.com/Md_Harris)
-
-### Differences from Silge's Analysis
-1. Is zero inflated to include states not mentioned in lyrics
-2. Incorporates mentions of cities with >= 100k population aggregated to their state and compares to analysis without city counts
-3. Utilizes Hamiltonian Monte Carlo via `rstan` to estimate parameters, propagated uncertainty, and predict new values.
-
-
-### Why Go Bayes?
-Aside from being an interesting data set due to cultural relevance, it is also a really great example of for why one may want to use a Bayesian approach.  As described in Silge's post, the simple calculation of a mention rate is unsatisfying because it does not consider the magnitude of each states population.  We would prefer a method that incorporates this information and can make a new estimate  based on the number of mentions and population each state that therefore *regularizes* the estimates based on all of the information available. This include prior information and empirical data.  
-
-In my humble opinion this is a really key point; the reason that Silge utilized the beta distribution to *model* the data (as opposed to simply describe) is because she wanted to show the uncertainty for each estimate based on a states mentions and population.  The problem this solves is a state that has a very high rate, but few mentions because it has a low population.  This is in opposition to a state that is mentioned many times, but has a lower rate because of a large population.  This is the classic "batting average" from illuminated by David Robinson [here](http://stats.stackexchange.com/questions/47771/what-is-the-intuition-behind-beta-distribution).
-
-What the Bayesian approach does is incorporate prior knowledge (e.g. priors) and the uncertainty that comes with balancing values based on only a few data points against values based on many data points; which are likely more reliable. By this, the expectation for a states rate of mention is regularized or drawn towards a central global expectation. States with fewer data points are regularized more than more stable states with lots of data.  Finally, the [Credible Interval](https://en.wikipedia.org/wiki/Credible_interval) captures the uncertainty that propagates through this system.  Regularization and uncertainty estimation are key reasons why someone may want to use Bayesian methods.
-
-
-
-Let's get started!
-
-
-#### Packages
-```{r libraries, echo=TRUE, message=FALSE, warning=FALSE}
+## ----libraries, echo=TRUE, message=FALSE, warning=FALSE------------------
 library("ggplot2")
 library("grid")
 library("dplyr")
@@ -83,18 +16,8 @@ library("fitdistrplus")
 library("rstan")
 library("knitr")
 library("rmarkdown")
-```
 
-
-## Get Data
-1. Use `acs` package to get state population data from 2014
-    i) requires an API from the [Census](http://www.census.gov/developers/)
-2. Grab song lyrics from Kaylin Walker's [repo](http://kaylinwalker.com/50-years-of-pop-music/)
-3. Load `./data/cities_over_100k_pop.csv`, names of cities with >= 100k population
-    i) UNCOMMENT that line `download.file(lyrics_url, save_lyrics_loc)` to run
-    ii) you may have to adjust the path
-4. Load state name abbreviation for simplifying the plots later
-```{r get_data, comment = '', cache=TRUE }
+## ----get_data, comment = '', cache=TRUE----------------------------------
 #api.key.install("YOUR KEY HERE!")
 ## population data
 stategeo <- geo.make(state = "*")
@@ -111,13 +34,8 @@ song_lyrics <- read_csv(save_lyrics_loc)
 cities_dat_loc <- "~/Documents/R_Local/Put_a_prior_on_it-Blog_post/data/cities_over_100k_pop.csv"
 state_abbrev_loc <- "~/Documents/R_Local/Put_a_prior_on_it-Blog_post/data/state_abbrev.csv"
 state_abbrev <- read_csv(state_abbrev_loc)
-```
 
-
-## Join, mutate, and munge the data
-### Prepare data for extracting lyrics
-The `tidytext` package uses `unnest_tokens` to do the heavy lifting here.  Thanks [David Robinson](http://varianceexplained.org/) and Julia Silge for this package!
-```{r population_data,comment = ''}
+## ----population_data,comment = ''----------------------------------------
 # extract desired info from acs data
 pop_df <- tbl_df(melt(estimate(popfetch))) %>%
   mutate(name = as.character(Var1),
@@ -139,13 +57,8 @@ tidy_lyrics <- bind_rows(song_lyrics %>%
                song_lyrics %>% 
                unnest_tokens(lyric, Lyrics, 
                token = "ngrams", n = 2))
-```
 
-
-### Join lyrics to geography
-Here the lyrics are joined to the state names to find the songs that contain those names.  An `inner_join` will return only the songs and states that match.  Here I use a `right_join` to retain all 50 state names even if they are not mentioned by any lyrics.  The `zeros` data set is then filtered for a data set that only has matching songs.  Also, I use `distinct(Song, Artist, lyric, ...)` to aggregate the data set to only a single row for each song even if it mentions a song many times. This choice if distinct criteria also allows for songs that mentioned many different states to remain, but collapses an edge case where a song was on the charts in different years.
-
-```{r data_summarize, comment=''}
+## ----data_summarize, comment=''------------------------------------------
 # join and retain songs whether or not they are in the lyrics
 tidy_lyrics_state_zeros <- right_join(tidy_lyrics, pop_df,
                                 by = c("lyric" = "state_name")) %>%
@@ -170,12 +83,8 @@ state_counts_zeros <- tidy_lyrics_state_zeros %>%
 # create another data set with 
 state_counts <- filter(state_counts_zeros, rate > zero_rate)
 print(dplyr::select(state_counts, state_name, n ,pop2014, rate))
-```
 
-
-#### Do the same as above, but for cities  
-Note the use of `inner_join` here because I am not interested in cities that are not mentioned.
-```{r cities, comment=''}
+## ----cities, comment=''--------------------------------------------------
 ### Cities
 ## join cities together - inner_join b/c I don't care about cities with zero mentions (right_join otherwise)
 tidy_lyrics_city <- inner_join(tidy_lyrics, cities,
@@ -200,11 +109,8 @@ city_state_counts <- tidy_lyrics_city %>%
   dplyr::summarise(n = sum(cnt)) %>%
   arrange(desc(n))
 print(city_state_counts)
-```
 
-
-#### Join city counts to state counts and compute new rate
-```{r city_state_join, comment=''}
+## ----city_state_join, comment=''-----------------------------------------
 state_city_counts_zeros <- left_join(state_counts_zeros,
                                      city_state_counts,
                                      by = "state_name") %>%
@@ -215,16 +121,8 @@ state_city_counts_zeros <- left_join(state_counts_zeros,
 
 # same as above, but no states with zero mentioned by city or state
 state_city_counts <- filter(state_city_counts_zeros, n_city_state > zero_rate)
-```
 
-
-
-## Fun facts...
-### Some interesting things about these data
-
-
-####1. States mentioned by their cities, but not the state itself
-```{r fun_facts, comment=''}
+## ----fun_facts, comment=''-----------------------------------------------
 # Boston = most mentioned city without its state
 all_the_cities <- filter(state_city_counts, !state_name %in% state_counts$state_name) %>%
   dplyr::select(name) %>%
@@ -233,11 +131,8 @@ all_the_cities <- filter(state_city_counts, !state_name %in% state_counts$state_
   dplyr::select(name, Song, Artist, city)
 
 kable(all_the_cities)
-```
 
-
-#### 2. What song mentions the most unique state names?
-```{r fun_facts2, comment=''}
+## ----fun_facts2, comment=''----------------------------------------------
 n_states_mentioned <- tidy_lyrics_state %>%
   group_by(Artist, Song) %>%
   dplyr::summarise(n = n()) %>%
@@ -249,11 +144,8 @@ kable(n_states_mentioned)
 # Top song is...
 filter(tidy_lyrics_state, Song == as.character(n_states_mentioned[1,1])) %>%
   dplyr::select(Song, Artist, Year, state_name)
-```
 
-
-#### 3. What song mentions a single state the most number of times?
-```{r fun_facts3, comment=''}
+## ----fun_facts3, comment=''----------------------------------------------
 most_repeated_in_song <- right_join(tidy_lyrics, pop_df,
                                 by = c("lyric" = "state_name")) %>%
   group_by(Song, Artist, lyric) %>%   
@@ -263,19 +155,8 @@ most_repeated_in_song <- right_join(tidy_lyrics, pop_df,
   filter(row_number() <= 10)
 
 kable(most_repeated_in_song)
-```
 
-
-
-## Parameter estimation
-### Estimate the parameters of the beta distribution in 3 ways:
-1. Maximum-likelihood Estimation (MLE) with `fitdistr` package
-2. Limited memory BFGS with the `rstan` package
-3. Hamiltonian Monte Carlo (HMC) with `Stan` and `rstan` package
-
-#### MLE with `fitdistr`
-Here I use `fitdist` to compare the parameter estimates and Log likelihood of three different distributions, beta, exponential, and log-normal. This method is very fast, but not as accurate as the full Bayesian estimate. Here the beta has the best fit.  You could explore different distributions that make sense for the data, but since Silge used beta, I am also.
-```{r fitdistr, comment=''}
+## ----fitdistr, comment=''------------------------------------------------
 ## beta boot for comparison
 beta_fit <- fitdist(state_counts_zeros$rate,"beta") # best logLik
 summary(beta_fit)
@@ -283,12 +164,8 @@ exp_fit <- fitdist(state_counts_zeros$rate,"exp")
 summary(exp_fit)
 lnorm_fit <- fitdist(state_counts_zeros$rate,"lnorm")
 summary(lnorm_fit)
-```
 
-
-#### Optimizing in `rstan`
-This is the first introduction to a Stan model contained in the character string `opt_chr1`.  Typically the Stan model is saved in a separate file and called, but I kept it all in-house for this analysis.
-```{r stan_optim, message=FALSE, warning=FALSE, comment='', include=TRUE, results="hide", cache = TRUE}
+## ----stan_optim, message=FALSE, warning=FALSE, comment='', include=TRUE, results="hide", cache = TRUE----
 opt_chr1 <- "
 data {
   int<lower=0> N;
@@ -315,19 +192,13 @@ opt1 <- optimizing(object = opt_mod1, as_vector = FALSE,
                                N = length(state_counts_zeros$rate)),
                    hessian = TRUE,
                    draws = 2500)
-```
 
-
-#### Parameters estimates and log likelihood
-```{r optim_results, comment=''}
+## ----optim_results, comment=''-------------------------------------------
 # view results
 opt1$par 
 opt1$value #compare to LogLikelihood of summary(beta_fit)
-```
 
-
-plot distribution of parameters to see dispersal and correlation 
-```{r param_plot, comment='', fig.align="center"}
+## ----param_plot, comment='', fig.align="center"--------------------------
 ggplot(data.frame(opt1$theta_tilde), aes(x = alpha0, y = beta0)) +
   geom_point(color = "skyblue3", alpha = 0.35) +
   geom_density2d(aes(colour =..level..)) + 
@@ -350,15 +221,8 @@ ggplot(data.frame(opt1$theta_tilde), aes(x = alpha0, y = beta0)) +
     legend.position = "none",
     panel.grid.minor = element_blank()
     )
-```
 
-
-
-## Hamiltonian Monte Carlo (HMC)
-#### Estimation and prediction
-As the third method of estimation, we use a full Stan model and include a `generated quantities` block to make predictions of new rates for each state.  In this block, new parameters for each state are drawn and calculated into expected mention rates based on the observed number of mentions and population.  Estimating this within the model allows for the full integration over uncertainty.  Another approach is to take the `alpha` and `beta` parameters distributions, sample those outside the model and calculate the state estimates.
-
-```{r, stan_fit, comment='', cache=TRUE}
+## ---- stan_fit, comment='', cache=TRUE-----------------------------------
 model_string1_pred <- "
 data {
   int<lower=1> N;
@@ -382,11 +246,8 @@ model {
                 (new_attempts[n] - new_success[n]  + beta0));
 }
 "
-```
 
-
-### Run the Stan model
-```{r sta_fit_data, message=FALSE, warning=FALSE, comment='', include=TRUE, results="hide"}
+## ----sta_fit_data, message=FALSE, warning=FALSE, comment='', include=TRUE, results="hide"----
 new_success = state_counts_zeros$n
 new_attempts = (state_counts_zeros$pop2014)/100000
 model_dat1_pred <- list(x = state_counts_zeros$rate, 
@@ -397,12 +258,8 @@ model_dat1_pred <- list(x = state_counts_zeros$rate,
 fit1_pred <- stan(model_code = model_string1_pred, 
                   data = model_dat1_pred,
                   iter = 10000, chains = 4,  warmup=2500)
-```
 
-
-#### Extract results
-Show the 95% Credible Interval for `alpha`, `beta`, each state, and the log posterior `lp__`
-```{r print_dat1_model, comment=''}
+## ----print_dat1_model, comment=''----------------------------------------
 fit1_pred_summary <- data.frame(summary(fit1_pred)[["summary"]]) %>%
   rownames_to_column() %>%
   mutate(Parameter = c("alpha0", "beta0",
@@ -413,11 +270,8 @@ fit1_pred_summary <- data.frame(summary(fit1_pred)[["summary"]]) %>%
                 `2.5%` = X2.5.,
                 `97.5%` = X97.5.)
 kable(fit1_pred_summary, digits = 3)
-```
 
-
-#### Realtionship of Bayesian to observed estimate
-```{r state_estimate, message=FALSE, warning=FALSE, comment='', fig.height=6, fig.width=6, fig.align="center"}
+## ----state_estimate, message=FALSE, warning=FALSE, comment='', fig.height=6, fig.width=6, fig.align="center"----
 state_estimates <- rstan::extract(fit1_pred, pars = "x_tilde") %>%
   data.frame() %>%
   rename_(.dots=setNames(names(.),state_counts_zeros$state_name)) %>%
@@ -429,11 +283,8 @@ state_estimates <- rstan::extract(fit1_pred, pars = "x_tilde") %>%
                    q975 = quantile(value, probs = 0.975),
                    mean = mean(value)) %>%
   left_join(.,state_counts_zeros)
-```
 
-
-The plot design here is based entirely on Silge's visualization
-```{r post_pred_state_plot, comment=''}
+## ----post_pred_state_plot, comment=''------------------------------------
 ### could melt and add q025,q5,q975 by color/shape
 ### could also predict across range of rates and show areas
 
@@ -452,12 +303,8 @@ ggplot(state_estimates, aes(rate, mean)) +
        caption = "plot design by @juliasilge") +
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS"))
-```
 
-
-#### Bayesian vs. Observed estimate and 95% CI by state
-The plot design here is based entirely on Silge's visualization
-```{r state_estim_plot, comment='', fig.height=8, fig.width=7, fig.align="center"}
+## ----state_estim_plot, comment='', fig.height=8, fig.width=7, fig.align="center"----
 state_estimates %>% 
   arrange(desc(mean)) %>% 
   mutate(state_name = factor(name, levels = rev(unique(name)))) %>%
@@ -475,12 +322,8 @@ state_estimates %>%
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS", face = "bold")) +
   theme(legend.title=element_blank())
-```
 
-
-## Adding City Counts
-### Below is a repeate of the analysis above, but using that dataset that includes the additional counts of cities mentions:  `state_city_counts_zeros`
-```{r state_city_fit, comment=''}
+## ----state_city_fit, comment=''------------------------------------------
 new_success_SC = state_city_counts_zeros$n_city_state
 new_attempts_SC = (state_city_counts_zeros$pop2014)/100000
 model_SC_pred <- list(x = state_city_counts_zeros$city_state_rate, 
@@ -488,19 +331,13 @@ model_SC_pred <- list(x = state_city_counts_zeros$city_state_rate,
                    new_success = new_success_SC,
                    new_attempts = new_attempts_SC,
                    M = length(new_success_SC))
-```
 
-
-#### Fit same Stan model as above, but new data.
-```{r fit_SC_model, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE, comment='', results="hide"}
+## ----fit_SC_model, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE, comment='', results="hide"----
 fit_SC_pred <- stan(model_code = model_string1_pred, 
                   data = model_SC_pred,
                   iter = 10000, chains = 4,  warmup=2500)
-```
 
-
-#### Summarise Stan fit
-```{r print_model_SC_pred, comment=''}
+## ----print_model_SC_pred, comment=''-------------------------------------
 fit_SC_pred_summary <- data.frame(summary(fit_SC_pred)[["summary"]]) %>%
   rownames_to_column() %>%
   mutate(Parameter = c("alpha0", "beta0",
@@ -511,11 +348,8 @@ fit_SC_pred_summary <- data.frame(summary(fit_SC_pred)[["summary"]]) %>%
                 `2.5%` = X2.5.,
                 `97.5%` = X97.5.)
 kable(fit_SC_pred_summary,  digits = 3)
-```
 
-
-#### Prepare fit estimates for plotting
-```{r state_city_estimates, comment=''}
+## ----state_city_estimates, comment=''------------------------------------
 state_city_estimates <- rstan::extract(fit_SC_pred, pars = "x_tilde") %>%
   data.frame() %>%
   rename_(.dots=setNames(names(.),state_city_counts_zeros$state_name)) %>%
@@ -527,12 +361,8 @@ state_city_estimates <- rstan::extract(fit_SC_pred, pars = "x_tilde") %>%
                    q975 = quantile(value, probs = 0.975),
                    mean = mean(value)) %>%
   left_join(.,state_city_counts_zeros)
-```
 
-
-#### Realtionship of Bayesian to observed state + city estimate
-The plot design here is based entirely on Silge's visualization
-```{r state_city_dot_plot, comment='', fig.height=6, fig.width=6, fig.align="center"}
+## ----state_city_dot_plot, comment='', fig.height=6, fig.width=6, fig.align="center"----
 ### could melt and add q025,q5,q975 by color/shape
 ### could also predict across range of rates and show areas
 ggplot(state_city_estimates, aes(city_state_rate, mean)) +
@@ -550,12 +380,8 @@ ggplot(state_city_estimates, aes(city_state_rate, mean)) +
        caption = "plot design by @juliasilge") +
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS"))
-```
 
-
-#### Bayesian vs. Observed state + city estimate and 95% CI by state
-The plot design here is based entirely on Silge's visualization
-```{r state_city_range_plot, comment='', fig.height=8, fig.width=7, fig.align="center"}
+## ----state_city_range_plot, comment='', fig.height=8, fig.width=7, fig.align="center"----
 ### range estiamtes plot
 state_city_estimates %>% 
   arrange(desc(mean)) %>% 
@@ -574,26 +400,8 @@ state_city_estimates %>%
   theme_minimal(base_family = "Trebuchet MS") +
   theme(plot.title=element_text(family="Trebuchet MS", face = "bold")) +
   theme(legend.title=element_blank())
-```
 
-
-
-## Model Comparison
-There are lots of ways to compare which model is "better", but I am not going to go crazy with it.  Log posteriors from the Stan models *can* be compared, but I do not believe they can be used for inference directly from the form they are reported from the fit.  We could also do things like hold-out samples, cross-validations, Leave-One-Out CV, or use information criteria such as WAIC.  [See Gelman](http://andrewgelman.com/2014/05/26/waic-cross-validation-stan/) and go down the rabbit hole from there. 
-
-Here I take a simple approach and calculate a few metrics based a few things:
-
-* Loss Metrics
-    + Mean Absolute Error (MAE)
-    + Root Mean Square Error (RMSE)
-* Credible Interval (CI)
-    + mean width of 95% CI
-* Predicted Mentions
-    + RMSE of expected mentions vs observed mentions
-    + MAE of the same
-    
-These result show that the state counts only model *may* have the slightest advantage over the states + cities counts, but it really is very small.  For me, the choice of model would simply be which fits my purpose better; both are pretty darn good at estimating the number of mentions.  the MAE of expected mentions per state is less than 0.2 of a mention; rounded down to no real error at all in that category.  The beta distribution accurately described these data
-```{r model_RMSE, comment=''}
+## ----model_RMSE, comment=''----------------------------------------------
 city_state_error <- state_city_estimates %>%
   mutate(rate_error = mean - city_state_rate,
          pred_mentions = round(mean * (pop2014/100000),1),
@@ -626,29 +434,12 @@ model_rmse <- data.frame(model = c("States Only", "City and States"),
            RMSE_mentions =  c(state_error[4], city_state_error[4]),
            MAE_mentions =  c(state_error[5], city_state_error[5]))
 kable(model_rmse, digits = 3)
-```
- 
-  
-## Create R scipt
-From this markdown, I use the `purl()` function in the `rmarkdown` package to extract the code. This is run just after the `*.Rmd` file is created.  Otherwise, it trys to read an already open file and fails to `knit()`
-```{r purl, comment=''}
+
+## ----purl, comment=''----------------------------------------------------
 rmd_loc <- "/Users/mattharris/Documents/R_Local/Put_a_prior_on_it-Blog_post/"
-# purl(input  = paste0(rmd_loc, "README.Rmd"), 
-#     output = paste0(rmd_loc, "R_script/README_r_script.R"))
-```
- 
- 
- 
-### Thanks for reading!!!!  
-  
-  
-  
-  
-### Environment  
-```{r session_info, comment=''}
+purl(input  = paste0(rmd_loc, "README.Rmd"), 
+     output = paste0(rmd_loc, "R_script/README_r_script.R"))
+
+## ----session_info, comment=''--------------------------------------------
 sessionInfo()
-```
-
-
-
 
